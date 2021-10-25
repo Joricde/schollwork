@@ -123,7 +123,7 @@ def update_record(title_record):
 def read(dl: list) -> list:
     result = []
     for d in dl:
-        if d["activity_org"] == "全部" and d["grade"] == "全部" and d["remote_check"] == "是":
+        if d["activity_org"] == "全部" and (d["grade"] == "全部" or d["grade"].find(2018) != -1):
             print(d["title"])
             result.append(d)
     return result
