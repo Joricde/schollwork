@@ -77,7 +77,7 @@ def get_activity():
             address = content.find("a")["title"]
             d = {"title": title,
                  "organization": "".join(str(content.contents[2]).split()).strip(),
-                 "activity_org": "".join(str(content.contents[2]).split()).strip(),
+                 "activity_org": "".join(str(content.contents[14].text).split()).strip(),
                  "address": address,
                  "grade": "".join(str(content.contents[18]).split()).strip(),
                  "activity_time": "".join(str(content.contents[22]).split()).strip(),
@@ -123,7 +123,7 @@ def update_record(title_record):
 def read(dl: list) -> list:
     result = []
     for d in dl:
-        if d["activity_org"] == "全部" and (d["grade"] == "全部" or d["grade"].find(2018) != -1):
+        if d["activity_org"] == "全部" and (d["grade"] == "全部" or d["grade"].find("2018") != -1):
             print(d["title"])
             result.append(d)
     return result
