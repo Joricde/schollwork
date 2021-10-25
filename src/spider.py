@@ -120,7 +120,7 @@ def update_record(title_record):
         raise Exception
 
 
-def read(dl: list) -> list[dict]:
+def read(dl: list) -> list:
     result = []
     for d in dl:
         if d["activity_org"] == "全部" and d["grade"] == "全部" and d["remote_check"] == "是":

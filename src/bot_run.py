@@ -1,14 +1,13 @@
 import logging
-import sys
 import time
 import spider
 import telegram
 from conf import config
 
-# logging.addLevelName("info")
 logging.basicConfig(level="INFO")
 
-def to_str(li: list[str, str]):
+
+def to_str(li):
     s = "标题: {}\n" \
         "组织: {}\n" \
         "可参与学院: {}\n" \
