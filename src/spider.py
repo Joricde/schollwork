@@ -1,4 +1,5 @@
 import json
+import logging
 
 import requests
 from bs4 import BeautifulSoup as bs
@@ -27,10 +28,11 @@ try:
     cursor.execute(sql_sentence)
     db.commit()
 except Exception:
+    logging.error(Exception)
     raise Exception
 
 
-def get_activity() -> list[dict]:
+def get_activity():
     header = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36 Edg/95.0.1020.30",

@@ -1,8 +1,12 @@
+import logging
+import sys
 import time
 import spider
 import telegram
 from conf import config
 
+# logging.addLevelName("info")
+logging.basicConfig(level="INFO")
 
 def to_str(li: list[str, str]):
     s = "标题: {}\n" \
@@ -23,12 +27,14 @@ token = config.CHAT_TOKEN
 bot = telegram.Bot(token=token)
 dl = spider.get_activity()
 start_time = time.localtime().tm_hour
-while time.localtime().tm_hour % start_time == 0:
-    result = spider.read(dl)
-    if len(result) > 0:
-        for send in result:
-            # send = json.dumps(send, ensure_ascii=False)
-            send = to_str(send)
-            bot.send_message(chat_id=chat_id, text=send)
-    print("finish")
+while True:
+    if time.localtime().tm_hour == start_time:
+        result = spider.read(dl)
+        if len(result) > 0:
+            for send in result:
+                # send = json.dumps(send, ensure_ascii=False)
+                send = to_str(send)
+                bot.send_message(chat_id=chat_id, text=send)
+        print(2333)
+        logging.info(f"finish at {time.localtime().tm_mday}")
     time.sleep(2400)
