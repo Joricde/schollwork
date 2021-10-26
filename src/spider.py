@@ -1,5 +1,6 @@
 import json
-import logging
+from logger import logger
+import time
 
 import requests
 from bs4 import BeautifulSoup as bs
@@ -28,23 +29,27 @@ try:
     cursor.execute(sql_sentence)
     db.commit()
 except Exception:
-    logging.error(Exception)
+    logger.error(Exception)
     raise Exception
 
 
-def get_activity():
+def get_activity() -> list:
     header = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36 Edg/95.0.1020.30",
         "Origin": "https://ncu.pocketuni.net",
         "Pragma": "no-cache",
     }
-    requests.get("https://ncu.pocketuni.net/index.php?app=home&mod=Index&act=index")
-    login_content = requests.post(url="https://ncu.pocketuni.net/index.php?app=home&mod=Public&act=doLogin",
-                                  allow_redirects=False,
-                                  headers=header,
-                                  data=config.SCHOOL
-                                  )
+    try:
+        requests.get("https://ncu.pocketuni.net/index.php?app=home&mod=Index&act=index")
+        login_content = requests.post(url="https://ncu.pocketuni.net/index.php?app=home&mod=Public&act=doLogin",
+                                      allow_redirects=False,
+                                      headers=header,
+                                      data=config.SCHOOL
+                                      )
+    except Exception as E:
+        logger.error(E)
+
     cookie = login_content.cookies
     end_spider = False
     query_data = get_last_record()
@@ -56,11 +61,18 @@ def get_activity():
     data_list = []
     title_dict = {}
     for num in range(1, 5):
-        r1 = requests.get(f"https://ncu.pocketuni.net/index.php?app=event&mod=School&act=board&cat=all&p={num}",
-                          headers=header, cookies=cookie)
+        try:
+            r1 = requests.get(f"https://ncu.pocketuni.net/index.php?app=event&mod=School&act=board&cat=all&p={num}",
+                              headers=header, cookies=cookie)
+            status_code = r1.status_code
+            if status_code != 200:
+                raise
+        except TypeError:
+            logger.error(TypeError)
+        logger.info(f"request page {num} success")
+        time.sleep(5)
         data1 = bs(r1.text, 'html.parser')
         urls = data1.find_all(class_="hd_c_left_title b")
-
         for url in urls:
             title_id = int(str(url.a["href"]).split("&")[3].split("=")[1])
             title_uid = int(str(url.a["href"]).split("&")[4].split("=")[1])
@@ -71,7 +83,13 @@ def get_activity():
                 break
             else:
                 stack.append(title_dict)
-            r2 = requests.get(url.a["href"], headers=header, cookies=cookie)
+            try:
+                r2 = requests.get(url.a["href"], headers=header, cookies=cookie)
+            except Exception:
+                logger.error(TypeError)
+                raise Exception
+            logger.info(f"request specific activity {title} success")
+            time.sleep(10)
             data2 = bs(r2.text, 'html.parser')
             content = data2.find(class_="content_hd_c")
             address = content.find("a")["title"]
@@ -99,12 +117,13 @@ def get_activity():
     return data_list
 
 
-def get_last_record():
+def get_last_record() -> tuple:
     cursor.execute("""select pu_activity.title_id, pu_activity.title_uid from 
     blockchaindata.pu_activity order by id desc limit 1""")
     try:
         result = cursor.fetchone()
     except Exception:
+        logger.error(TypeError)
         raise Exception
     return result
 
@@ -117,13 +136,15 @@ def update_record(title_record):
     try:
         cursor.execute(query, values)
     except Exception:
+        logger.error(TypeError)
         raise Exception
+    logger.info("sql update finish")
 
 
 def read(dl: list) -> list:
     result = []
     for d in dl:
         if d["activity_org"] == "全部" and (d["grade"] == "全部" or d["grade"].find("2018") != -1):
-            print(d["title"])
+            logger.info(d["title"])
             result.append(d)
     return result
