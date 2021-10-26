@@ -4,7 +4,7 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 
-from src import push
+import push
 
 
 def print_hi(name):
