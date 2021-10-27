@@ -35,7 +35,11 @@ def get_message():
     # start_time = time.localtime().tm_hour
     while True:
         if time.localtime().tm_hour % 24 == start_time:
-            dl = spider.get_activity()
+            try:
+                dl = spider.get_activity()
+            except Exception:
+                bot.send_message(chat_id=chat_id, text=Exception)
+                raise Exception
             result = spider.read(dl)
             if len(result) > 0:
                 for send in result:
@@ -46,7 +50,11 @@ def get_message():
             now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
             logger.info(f"finish at {now_time}")
         else:
-            logger.info(f"wait  Wait for next query , now time: {time.localtime().tm_hour}, query time: {start_time}")
+            ms = f"There are no activities that meet the query criteria \n" \
+                 f"Wait for next query \n" \
+                 f"now time: {time.localtime().tm_hour}, query time: {start_time}"
+            logger.info(ms)
+            bot.send_message(chat_id=chat_id, text=ms)
         time.sleep(2400)
 
 

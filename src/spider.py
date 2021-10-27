@@ -1,4 +1,3 @@
-import json
 from logger import logger
 import time
 
@@ -8,29 +7,36 @@ from pymysql import connect
 from conf import config
 
 db_table = "pu_activity"
-sql_sentence = f"""
-    create table if not exists {db_table}(
-    id int auto_increment,
-    title varchar(512),
-    title_id int, 
-    title_uid int,
-    constraint {db_table}_pk
-    primary key (id)
-    );
-"""
 
-try:
-    db = connect(host=config.SQL_DATA["host"],
-                 password=config.SQL_DATA["password"],
-                 user=config.SQL_DATA["user"],
-                 database=config.SQL_DATA["database"],
-                 charset=config.SQL_DATA["charset"])
-    cursor = db.cursor()
-    cursor.execute(sql_sentence)
-    db.commit()
-except Exception:
-    logger.error(Exception)
-    raise Exception
+
+def init_sql():
+    sql_sentence = f"""
+        create table if not exists {db_table}(
+        id int auto_increment,
+        title varchar(512),
+        title_id int, 
+        title_uid int,
+        constraint {db_table}_pk
+        primary key (id)
+        );
+    """
+
+    try:
+        db = connect(host=config.SQL_DATA["host"],
+                     password=config.SQL_DATA["password"],
+                     user=config.SQL_DATA["user"],
+                     database=config.SQL_DATA["database"],
+                     charset=config.SQL_DATA["charset"])
+        cursor = db.cursor()
+        cursor.execute(sql_sentence)
+        db.commit()
+        db.close()
+    except Exception:
+        logger.error(Exception)
+        raise Exception
+
+
+init_sql()
 
 
 def get_activity() -> list:
@@ -49,11 +55,11 @@ def get_activity() -> list:
                                       )
     except Exception as E:
         logger.error(E)
-
+        raise E
     cookie = login_content.cookies
     end_spider = False
     query_data = get_last_record()
-    if query_data is not None:
+    if len(query_data) > 0:
         query_title_id, query_title_uid = query_data[0], query_data[1]
     else:
         query_title_id, query_title_uid = 0, 0
@@ -67,8 +73,9 @@ def get_activity() -> list:
             status_code = r1.status_code
             if status_code != 200:
                 raise
-        except TypeError:
-            logger.error(TypeError)
+        except Exception:
+            logger.error(Exception)
+            raise Exception
         logger.info(f"request page {num} success")
         time.sleep(5)
         data1 = bs(r1.text, 'html.parser')
@@ -113,22 +120,40 @@ def get_activity() -> list:
         for num2 in range(0, len(stack)):
             title_record = stack[len(stack) - num2 - 1]
             update_record(title_record)
-    db.commit()
     return data_list
 
 
 def get_last_record() -> tuple:
-    cursor.execute("""select pu_activity.title_id, pu_activity.title_uid from 
-    blockchaindata.pu_activity order by id desc limit 1""")
+    result = ()
     try:
+        db = connect(host=config.SQL_DATA["host"],
+                     password=config.SQL_DATA["password"],
+                     user=config.SQL_DATA["user"],
+                     database=config.SQL_DATA["database"],
+                     charset=config.SQL_DATA["charset"])
+        cursor = db.cursor()
+        cursor.execute("""select pu_activity.title_id, pu_activity.title_uid from 
+        blockchaindata.pu_activity order by id desc limit 1""")
+        db.commit()
         result = cursor.fetchone()
+        db.close()
     except Exception:
-        logger.error(TypeError)
+        logger.error(Exception)
         raise Exception
     return result
 
 
 def update_record(title_record):
+    try:
+        db = connect(host=config.SQL_DATA["host"],
+                     password=config.SQL_DATA["password"],
+                     user=config.SQL_DATA["user"],
+                     database=config.SQL_DATA["database"],
+                     charset=config.SQL_DATA["charset"])
+        cursor = db.cursor()
+    except Exception:
+        logger.error(Exception)
+        raise Exception
     query = f"""
         insert into {db_table}(title, title_id, title_uid) values (%s,%s,%s)
     """
