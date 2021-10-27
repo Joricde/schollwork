@@ -60,9 +60,10 @@ def get_activity() -> list:
     end_spider = False
     query_data = get_last_record()
     if len(query_data) > 0:
-        query_title_id, query_title_uid = query_data[0], query_data[1]
+        query_title, query_title_id, query_title_uid = query_data[0], query_data[1], query_data[2]
     else:
-        query_title_id, query_title_uid = 0, 0
+        query_title, query_title_id, query_title_uid = 'no data', 0, 0
+    logger.info(f"The latest title in sql: {query_title} ")
     stack = []
     data_list = []
     title_dict = {}
@@ -77,7 +78,7 @@ def get_activity() -> list:
             logger.error(Exception)
             raise Exception
         logger.info(f"request page {num} success")
-        time.sleep(5)
+        time.sleep(2)
         data1 = bs(r1.text, 'html.parser')
         urls = data1.find_all(class_="hd_c_left_title b")
         for url in urls:
@@ -96,7 +97,7 @@ def get_activity() -> list:
                 logger.error(TypeError)
                 raise Exception
             logger.info(f"request specific activity {title} success")
-            time.sleep(10)
+            time.sleep(2)
             data2 = bs(r2.text, 'html.parser')
             content = data2.find(class_="content_hd_c")
             address = content.find("a")["title"]
@@ -132,7 +133,7 @@ def get_last_record() -> tuple:
                      database=config.SQL_DATA["database"],
                      charset=config.SQL_DATA["charset"])
         cursor = db.cursor()
-        cursor.execute("""select pu_activity.title_id, pu_activity.title_uid from 
+        cursor.execute("""select pu_activity.title, pu_activity.title_id, pu_activity.title_uid from 
         blockchaindata.pu_activity order by id desc limit 1""")
         db.commit()
         result = cursor.fetchone()
@@ -163,6 +164,8 @@ def update_record(title_record):
     except Exception:
         logger.error(TypeError)
         raise Exception
+    db.commit()
+    db.close()
     logger.info("sql update finish")
 
 
@@ -172,4 +175,5 @@ def read(dl: list) -> list:
         if d["activity_org"] == "全部" and (d["grade"] == "全部" or d["grade"].find("2018") != -1):
             logger.info(d["title"])
             result.append(d)
+    logger.info(f"query result {result}")
     return result

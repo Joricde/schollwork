@@ -7,7 +7,6 @@ from conf import config
 import re
 import time
 
-
 # Define a few command handlers. These usually take the two arguments update and
 # context.
 
@@ -38,7 +37,7 @@ def get_message():
             try:
                 dl = spider.get_activity()
             except Exception:
-                bot.send_message(chat_id=chat_id, text=Exception)
+                bot.send_message(chat_id=chat_id, text=str(Exception))
                 raise Exception
             result = spider.read(dl)
             if len(result) > 0:
@@ -46,16 +45,50 @@ def get_message():
                     # send = json.dumps(send, ensure_ascii=False)
                     send = to_str(send)
                     bot.send_message(chat_id=chat_id, text=send)
-                    time.sleep(5)
+                    time.sleep(3)
+            else:
+                ms = f"There are no activities that meet the query criteria \n" \
+                     f"Wait for next query \n" \
+                     f"now time: {time.localtime().tm_hour}, query time: {start_time}"
+                logger.info(ms)
+                bot.send_message(chat_id=chat_id, text=ms)
             now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
             logger.info(f"finish at {now_time}")
-        else:
-            ms = f"There are no activities that meet the query criteria \n" \
-                 f"Wait for next query \n" \
-                 f"now time: {time.localtime().tm_hour}, query time: {start_time}"
-            logger.info(ms)
-            bot.send_message(chat_id=chat_id, text=ms)
+
         time.sleep(2400)
+
+
+def check(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /check is issued."""
+    user = update.effective_user
+    update.message.reply_markdown_v2(
+        fr'checking, please wait a few minutes\!',
+        reply_markup=ForceReply(selective=True),)
+
+    try:
+        dl = spider.get_activity()
+    except Exception:
+        update.message.reply_markdown_v2(
+            text=str(Exception),
+            reply_markup=ForceReply(selective=True),
+        )
+        raise Exception
+    result = spider.read(dl)
+    if len(result) > 0:
+        for send in result:
+            send = to_str(send)
+            update.message.reply_markdown_v2(
+                text=send,
+                reply_markup=ForceReply(selective=True),
+            )
+            time.sleep(2)
+    else:
+        ms = f"There are no activities that meet the query criteria now\n" \
+             f"Wait for some time \n"
+        update.message.reply_markdown_v2(text=ms,
+                                         reply_markup=ForceReply(selective=True))
+    now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
+    logger.info(f"check finish at {now_time}")
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -69,12 +102,13 @@ def start(update: Update, context: CallbackContext) -> None:
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Help...building')
+    update.message.reply_text('Help...building\n'
+                              'use \\check to query now')
 
 
 def echo_reply(update: Update, context: CallbackContext) -> None:
     """Echo the user message."""
-    logger.info(update.message)
+    # logger.info(update.message)
     reply = update.message.reply_to_message.text if update.message.reply_to_message is not None else []
     all_time = re.findall('[0-9]{4}-[0-9]{2}-[0-9]{4}:[0-6][0-9]', reply) if len(reply) > 0 else []
     if len(all_time) > 0:
@@ -109,6 +143,7 @@ def bot_start() -> None:
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
+    dispatcher.add_handler(CommandHandler("check", check))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo_reply))
     updater.start_polling()
     get_message()
