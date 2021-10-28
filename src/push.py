@@ -61,14 +61,14 @@ def get_message():
 def check(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /check is issued."""
     user = update.effective_user
-    update.message.reply_markdown_v2(
-        fr'checking, please wait a few minutes\!',
-        reply_markup=ForceReply(selective=True),)
+    update.message.reply_text(
+        rf'checking, please wait a few minutes...',
+        reply_markup=ForceReply(selective=True), )
 
     try:
         dl = spider.get_activity()
     except Exception:
-        update.message.reply_markdown_v2(
+        update.message.reply_text(
             text=str(Exception),
             reply_markup=ForceReply(selective=True),
         )
@@ -77,16 +77,30 @@ def check(update: Update, context: CallbackContext) -> None:
     if len(result) > 0:
         for send in result:
             send = to_str(send)
-            update.message.reply_markdown_v2(
-                text=send,
-                reply_markup=ForceReply(selective=True),
-            )
+            try:
+                update.message.reply_text(
+                    text=rf"{send}",
+                    reply_markup=ForceReply(selective=True),
+                )
+            except Exception:
+                update.message.reply_text(
+                    text=str(Exception),
+                    reply_markup=ForceReply(selective=True),
+                )
+                raise Exception
             time.sleep(2)
     else:
         ms = f"There are no activities that meet the query criteria now\n" \
              f"Wait for some time \n"
-        update.message.reply_markdown_v2(text=ms,
-                                         reply_markup=ForceReply(selective=True))
+        try:
+            update.message.reply_text(text=ms,
+                                      reply_markup=ForceReply(selective=True))
+        except Exception:
+            update.message.reply_text(
+                text=str(Exception),
+                reply_markup=ForceReply(selective=True),
+            )
+            raise Exception
     now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
     logger.info(f"check finish at {now_time}")
 
@@ -103,7 +117,7 @@ def start(update: Update, context: CallbackContext) -> None:
 def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
     update.message.reply_text('Help...building\n'
-                              'use \\check to query now')
+                              'use /check to query now')
 
 
 def echo_reply(update: Update, context: CallbackContext) -> None:
