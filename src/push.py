@@ -1,3 +1,8 @@
+import asyncio
+
+import requests
+import telegram
+
 import conf.config
 from telegram import Update, ForceReply, Bot
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
@@ -58,19 +63,57 @@ def get_message():
         time.sleep(2400)
 
 
+def setu(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /setu is issued."""
+    user = update.effective_user
+
+    def get_setu(keywords=""):
+        url = r'https://api.lolicon.app/setu/v2'
+        if keywords:
+            keyword = keywords.split()
+            params = {
+                'r18': 0,
+                'tag': keyword,
+                'size': "regular"
+            }
+        else:
+            params = {
+                'r18': 0,
+                'size': "regular"
+            }
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            data = resp.json()
+            data = data['data'][0]["urls"]["regular"]
+            img = requests.get(data, stream=True).raw
+            return img
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
+            logger.error(f'服务器响应超时, params={params}')
+            return "服务器响应超时"
+        except Exception:
+            logger.error(f'涩图信息请求失败, params={params}')
+            raise Exception
+
+    args = " ".join(context.args)
+    img = get_setu(args)
+    update.message.bot.send_photo(
+        photo=img,
+        chat_id=update.message.chat_id)
+
+
 def check(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /check is issued."""
-    user = update.effective_user
-    update.message.reply_text(
+
+    update.message.bot.send_message(
         rf'checking, please wait a few minutes...',
-        reply_markup=ForceReply(selective=True), )
+        chat_id=update.message.chat_id)
 
     try:
         dl = spider.get_activity()
     except Exception:
-        update.message.reply_text(
+        update.message.bot.send_message(
             text=str(Exception),
-            reply_markup=ForceReply(selective=True),
+            chat_id=update.message.chat_id
         )
         raise Exception
     result = spider.read(dl)
@@ -78,14 +121,14 @@ def check(update: Update, context: CallbackContext) -> None:
         for send in result:
             send = to_str(send)
             try:
-                update.message.reply_text(
+                update.message.bot.send_message(
                     text=rf"{send}",
-                    reply_markup=ForceReply(selective=True),
+                    chat_id=update.message.chat_id
                 )
             except Exception:
-                update.message.reply_text(
+                update.message.bot.send_message(
                     text=str(Exception),
-                    reply_markup=ForceReply(selective=True),
+                    chat_id=update.message.chat_id
                 )
                 raise Exception
             time.sleep(2)
@@ -93,12 +136,12 @@ def check(update: Update, context: CallbackContext) -> None:
         ms = f"There are no activities that meet the query criteria now\n" \
              f"Wait for some time \n"
         try:
-            update.message.reply_text(text=ms,
-                                      reply_markup=ForceReply(selective=True))
+            update.message.bot.send_message(text=ms,
+                                            chat_id=update.message.chat_id)
         except Exception:
-            update.message.reply_text(
+            update.message.bot.send_message(
                 text=str(Exception),
-                reply_markup=ForceReply(selective=True),
+                chat_id=update.message.chat_id
             )
             raise Exception
     now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
@@ -117,7 +160,8 @@ def start(update: Update, context: CallbackContext) -> None:
 def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
     update.message.reply_text('Help...building\n'
-                              'use /check to query now')
+                              'use /check to query now\n'
+                              'use /setu  to get setu')
 
 
 def echo_reply(update: Update, context: CallbackContext) -> None:
@@ -158,6 +202,7 @@ def bot_start() -> None:
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     dispatcher.add_handler(CommandHandler("check", check))
+    dispatcher.add_handler(CommandHandler("setu", setu))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo_reply))
     updater.start_polling()
     get_message()
