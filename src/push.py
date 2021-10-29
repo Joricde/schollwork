@@ -1,10 +1,9 @@
-import asyncio
-
+import datetime
+import pytz
 import requests
-import telegram
 
 import conf.config
-from telegram import Update, ForceReply, Bot
+from telegram import Update, ForceReply
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 from logger import logger
 import spider
@@ -33,34 +32,33 @@ def to_str(li):
     return s
 
 
-def get_message():
-    bot = Bot(token=token)
+def get_message(context) -> None:
+    global chat_id
     start_time = 16
+    logger.info("get_message running")
     # start_time = time.localtime().tm_hour
-    while True:
-        if time.localtime().tm_hour % 24 == start_time:
-            try:
-                dl = spider.get_activity()
-            except Exception:
-                bot.send_message(chat_id=chat_id, text=str(Exception))
-                raise Exception
-            result = spider.read(dl)
-            if len(result) > 0:
-                for send in result:
-                    # send = json.dumps(send, ensure_ascii=False)
-                    send = to_str(send)
-                    bot.send_message(chat_id=chat_id, text=send)
-                    time.sleep(3)
-            else:
-                ms = f"There are no activities that meet the query criteria \n" \
-                     f"Wait for next query \n" \
-                     f"now time: {time.localtime().tm_hour}, query time: {start_time}"
-                logger.info(ms)
-                bot.send_message(chat_id=chat_id, text=ms)
-            now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
-            logger.info(f"finish at {now_time}")
-
-        time.sleep(2400)
+    # while True:
+    #     if time.localtime().tm_hour % 24 == start_time:
+    try:
+        dl = spider.get_activity()
+    except Exception:
+        context.bot.send_message(chat_id=context.job.context, text=str(Exception))
+        raise Exception
+    result = spider.read_needs(dl)
+    if len(result) > 0:
+        for send in result:
+            # send = json.dumps(send, ensure_ascii=False)
+            send = to_str(send)
+            context.bot.send_message(chat_id=context.job.context, text=send)
+            time.sleep(3)
+    else:
+        ms = f"There are no activities that meet the query criteria \n" \
+             f"Wait for next query \n" \
+             f"now time: {time.localtime().tm_hour}, query time: {start_time}"
+        logger.info(ms)
+        context.bot.send_message(chat_id=context.job.context, text=ms)
+    now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
+    logger.info(f"finish at {now_time}")
 
 
 def setu(update: Update, context: CallbackContext) -> None:
@@ -69,7 +67,8 @@ def setu(update: Update, context: CallbackContext) -> None:
 
     def get_setu(keywords=""):
         url = r'https://api.lolicon.app/setu/v2'
-        if keywords:
+        logger.info(f"keywords {keywords}, len:{len(keywords)})")
+        if len(keywords) > 0:
             keyword = keywords.split()
             params = {
                 'r18': 0,
@@ -84,51 +83,67 @@ def setu(update: Update, context: CallbackContext) -> None:
         try:
             resp = requests.get(url, params=params, timeout=10)
             data = resp.json()
-            data = data['data'][0]["urls"]["regular"]
-            img = requests.get(data, stream=True).raw
-            return img
+            if data["data"]:
+                data = data['data'][0]["urls"]["regular"]
+                img = requests.get(data, stream=True).raw
+                return img
+            else:
+                return False
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
             logger.error(f'服务器响应超时, params={params}')
             return "服务器响应超时"
         except Exception:
-            logger.error(f'涩图信息请求失败, params={params}')
-            raise Exception
+            logger.error(f'涩图信息请求失败, params={params} Exception:{Exception}')
 
-    args = " ".join(context.args)
+    logger.info(context.bot.get_me())
+    bot_name = "@" + context.bot.get_me()["username"]
+    bot_command = '/setu'
+    logger.info(f"args: {context.args}")
+    args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, ''))
+    logger.info(args)
+    logger.info(update.message)
     img = get_setu(args)
-    update.message.bot.send_photo(
-        photo=img,
-        chat_id=update.message.chat_id)
+    if img:
+        update.message.bot.send_photo(
+            photo=img,
+            chat_id=update.message.chat_id,
+            disable_notification=True)
+    else:
+        update.message.bot.send_message(
+            text="未找到匹配图片，请调整tag",
+            chat_id=update.message.chat_id,
+            disable_notification=True)
 
 
 def check(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /check is issued."""
-
+    logger.info(update.message.chat_id)
     update.message.bot.send_message(
-        rf'checking, please wait a few minutes...',
-        chat_id=update.message.chat_id)
+        text=rf'checking, please wait a few minutes...',
+        chat_id=update.message.chat_id
+    )
 
     try:
         dl = spider.get_activity()
     except Exception:
         update.message.bot.send_message(
             text=str(Exception),
-            chat_id=update.message.chat_id
+            chat_id=update.message.chat_id,
         )
         raise Exception
-    result = spider.read(dl)
+    result = spider.read_needs(dl)
     if len(result) > 0:
         for send in result:
             send = to_str(send)
             try:
                 update.message.bot.send_message(
                     text=rf"{send}",
-                    chat_id=update.message.chat_id
+                    chat_id=update.message.chat_id,
                 )
             except Exception:
                 update.message.bot.send_message(
                     text=str(Exception),
-                    chat_id=update.message.chat_id
+                    chat_id=update.message.chat_id,
                 )
                 raise Exception
             time.sleep(2)
@@ -137,7 +152,8 @@ def check(update: Update, context: CallbackContext) -> None:
              f"Wait for some time \n"
         try:
             update.message.bot.send_message(text=ms,
-                                            chat_id=update.message.chat_id)
+                                            chat_id=update.message.chat_id
+                                            )
         except Exception:
             update.message.bot.send_message(
                 text=str(Exception),
@@ -151,8 +167,13 @@ def check(update: Update, context: CallbackContext) -> None:
 def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
+    logger.info("message_push_running")
+    context.job_queue.run_daily(get_message,
+                                datetime.time(hour=16, minute=8, tzinfo=pytz.timezone('Asia/Shanghai')),
+                                days=(0, 1, 2, 3, 4, 5, 6), context=update.message.chat_id)
     update.message.reply_markdown_v2(
-        fr'Hi {user.mention_markdown_v2()}\!',
+        fr'Hi {user.mention_markdown_v2()}\!'
+        fr'message_push_running !',
         reply_markup=ForceReply(selective=True),
     )
 
@@ -161,7 +182,8 @@ def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
     update.message.reply_text('Help...building\n'
                               'use /check to query now\n'
-                              'use /setu  to get setu')
+                              'use /setu  to get setu'
+                              )
 
 
 def echo_reply(update: Update, context: CallbackContext) -> None:
@@ -184,28 +206,19 @@ def echo_reply(update: Update, context: CallbackContext) -> None:
         update.message.reply_text(text=update.message.text)
 
 
-# def message_push(update: Update, context: CallbackContext) -> None:
-#     result = push.get_message()
-#     if len(result) > 0:
-#         for send in result:
-#             # send = json.dumps(send, ensure_ascii=False)
-#             send = push.to_str(send)
-#             time.sleep(5)
-#             update.message.reply_text(text=send)
-
-
 def bot_start() -> None:
     """Start the bot."""
     updater = Updater(token)
     dispatcher = updater.dispatcher
-
-    dispatcher.add_handler(CommandHandler("start", start))
+    logger.info(updater.bot.get_me())
+    updater.bot.send_message(chat_id=chat_id, text="please use /start to init the bot")
+    dispatcher.add_handler(CommandHandler("start", start, pass_job_queue=True))
     dispatcher.add_handler(CommandHandler("help", help_command))
     dispatcher.add_handler(CommandHandler("check", check))
     dispatcher.add_handler(CommandHandler("setu", setu))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo_reply))
+
     updater.start_polling()
-    get_message()
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.

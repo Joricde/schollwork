@@ -67,7 +67,7 @@ def get_activity() -> list:
     stack = []
     data_list = []
     title_dict = {}
-    for num in range(1, 5):
+    for num in range(1, 50):
         try:
             r1 = requests.get(f"https://ncu.pocketuni.net/index.php?app=event&mod=School&act=board&cat=all&p={num}",
                               headers=header, cookies=cookie)
@@ -118,9 +118,8 @@ def get_activity() -> list:
             break
 
     if len(stack) > 0:
-        for num2 in range(0, len(stack)):
-            title_record = stack[len(stack) - num2 - 1]
-            update_record(title_record)
+        stack.reverse()
+        update_record(stack)
     return data_list
 
 
@@ -144,7 +143,7 @@ def get_last_record() -> tuple:
     return result
 
 
-def update_record(title_record):
+def update_record(stack):
     try:
         db = connect(host=config.SQL_DATA["host"],
                      password=config.SQL_DATA["password"],
@@ -155,21 +154,23 @@ def update_record(title_record):
     except Exception:
         logger.error(Exception)
         raise Exception
-    query = f"""
-        insert into {db_table}(title, title_id, title_uid) values (%s,%s,%s)
-    """
-    values = (title_record["title"], title_record["title_id"], title_record["title_uid"])
-    try:
-        cursor.execute(query, values)
-    except Exception:
-        logger.error(TypeError)
-        raise Exception
+    for title_record in stack:
+        query = f"""
+            insert into {db_table}(title, title_id, title_uid) values (%s,%s,%s)
+        """
+        values = (title_record["title"], title_record["title_id"], title_record["title_uid"])
+        try:
+            cursor.execute(query, values)
+        except Exception:
+            logger.error(TypeError)
+            raise Exception
+
     db.commit()
     db.close()
     logger.info("sql update finish")
 
 
-def read(dl: list) -> list:
+def read_needs(dl: list) -> list:
     result = []
     for d in dl:
         if d["activity_org"] == "全部" and (d["grade"] == "全部" or d["grade"].find("2018") != -1):
