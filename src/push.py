@@ -173,7 +173,7 @@ def start(update: Update, context: CallbackContext) -> None:
                                 days=(0, 1, 2, 3, 4, 5, 6), context=update.message.chat_id)
     update.message.reply_markdown_v2(
         fr'Hi {user.mention_markdown_v2()}\!'
-        fr'message_push_running !',
+        fr'message_push_running\!',
         reply_markup=ForceReply(selective=True),
     )
 
