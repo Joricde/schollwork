@@ -1,9 +1,9 @@
 import datetime
 import pytz
 import requests
-
 import conf.config
-from telegram import Update, ForceReply
+
+from telegram import Update, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 from logger import logger
 import spider
@@ -32,35 +32,6 @@ def to_str(li):
     return s
 
 
-def get_message(context) -> None:
-    global chat_id
-    start_time = 16
-    logger.info("get_message running")
-    # start_time = time.localtime().tm_hour
-    # while True:
-    #     if time.localtime().tm_hour % 24 == start_time:
-    try:
-        dl = spider.get_activity()
-    except Exception:
-        context.bot.send_message(chat_id=context.job.context, text=str(Exception))
-        raise Exception
-    result = spider.read_needs(dl)
-    if len(result) > 0:
-        for send in result:
-            # send = json.dumps(send, ensure_ascii=False)
-            send = to_str(send)
-            context.bot.send_message(chat_id=context.job.context, text=send)
-            time.sleep(3)
-    else:
-        ms = f"There are no activities that meet the query criteria \n" \
-             f"Wait for next query \n" \
-             f"now time: {time.localtime().tm_hour}, query time: {start_time}"
-        logger.info(ms)
-        context.bot.send_message(chat_id=context.job.context, text=ms)
-    now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
-    logger.info(f"finish at {now_time}")
-
-
 def setu(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /setu is issued."""
     user = update.effective_user
@@ -83,10 +54,14 @@ def setu(update: Update, context: CallbackContext) -> None:
         try:
             resp = requests.get(url, params=params, timeout=10)
             data = resp.json()
-            if data["data"]:
-                data = data['data'][0]["urls"]["regular"]
-                img = requests.get(data, stream=True).raw
-                return img
+            results_ = []
+            if data['data']:
+                for d in data["data"]:
+                    img_url = d["urls"]["regular"]
+                    pic = requests.get(img_url, stream=True).raw
+                    result_ = {'img': pic, 'pid': d['pid']}
+                    results_.append(result_)
+                return results_
             else:
                 return False
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
@@ -95,19 +70,22 @@ def setu(update: Update, context: CallbackContext) -> None:
         except Exception:
             logger.error(f'涩图信息请求失败, params={params} Exception:{Exception}')
 
-    logger.info(context.bot.get_me())
+    logger.info("setu module running")
     bot_name = "@" + context.bot.get_me()["username"]
     bot_command = '/setu'
     logger.info(f"args: {context.args}")
     args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, ''))
-    logger.info(args)
-    logger.info(update.message)
-    img = get_setu(args)
-    if img:
-        update.message.bot.send_photo(
-            photo=img,
-            chat_id=update.message.chat_id,
-            disable_notification=True)
+    results = get_setu(args)
+    if results:
+        for result in results:
+            pid = result['pid']
+            a = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=f'PID {pid}', url=f'https://www.pixiv.net/artworks/{pid}')]])
+            update.message.bot.send_photo(
+                photo=result['img'],
+                chat_id=update.message.chat_id,
+                reply_markup=a,
+                disable_notification=True)
     else:
         update.message.bot.send_message(
             text="未找到匹配图片，请调整tag",
@@ -115,9 +93,34 @@ def setu(update: Update, context: CallbackContext) -> None:
             disable_notification=True)
 
 
+def get_message(context) -> None:
+    global chat_id
+    start_time = 12
+    logger.info("get_message running")
+    try:
+        dl = spider.get_activity()
+    except Exception:
+        context.bot.send_message(chat_id=context.job.context, text=str(Exception))
+        raise Exception
+    result = spider.read_needs(dl)
+    if len(result) > 0:
+        for send in result:
+            send = to_str(send)
+            context.bot.send_message(chat_id=context.job.context, text=send)
+            time.sleep(3)
+    else:
+        ms = f"There are no activities that meet the query criteria \n" \
+             f"Wait for next query \n" \
+             f"now time: {time.localtime().tm_hour}, query cycle: {start_time}"
+        logger.info(ms)
+        context.bot.send_message(chat_id=context.job.context, text=ms)
+    now_time = time.strftime("%Y-%m-%d %H:%M", time.localtime())
+    logger.info(f"finish at {now_time}")
+
+
 def check(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /check is issued."""
-    logger.info(update.message.chat_id)
+    logger.info(f"checking...command from {update.message.chat_id}")
     update.message.bot.send_message(
         text=rf'checking, please wait a few minutes...',
         chat_id=update.message.chat_id
@@ -167,19 +170,21 @@ def check(update: Update, context: CallbackContext) -> None:
 def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
-    logger.info("message_push_running")
+    logger.info("start running")
     context.job_queue.run_daily(get_message,
-                                datetime.time(hour=16, minute=8, tzinfo=pytz.timezone('Asia/Shanghai')),
+                                datetime.time(hour=12, minute=6, tzinfo=pytz.timezone('Asia/Shanghai')),
                                 days=(0, 1, 2, 3, 4, 5, 6), context=update.message.chat_id)
+    logger.info("message_push_running")
     update.message.reply_markdown_v2(
         fr'Hi {user.mention_markdown_v2()}\!'
-        fr'message_push_running\!',
+        fr'message push module is running\!',
         reply_markup=ForceReply(selective=True),
     )
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
+    logger.info("help running")
     update.message.reply_text('Help...building\n'
                               'use /check to query now\n'
                               'use /setu  to get setu'
@@ -188,7 +193,7 @@ def help_command(update: Update, context: CallbackContext) -> None:
 
 def echo_reply(update: Update, context: CallbackContext) -> None:
     """Echo the user message."""
-    # logger.info(update.message)
+    logger.info("echo_reply running")
     reply = update.message.reply_to_message.text if update.message.reply_to_message is not None else []
     all_time = re.findall('[0-9]{4}-[0-9]{2}-[0-9]{4}:[0-6][0-9]', reply) if len(reply) > 0 else []
     if len(all_time) > 0:
@@ -210,7 +215,7 @@ def bot_start() -> None:
     """Start the bot."""
     updater = Updater(token)
     dispatcher = updater.dispatcher
-    logger.info(updater.bot.get_me())
+    logger.info(f"start- get_me: {updater.bot.get_me()}")
     updater.bot.send_message(chat_id=chat_id, text="please use /start to init the bot")
     dispatcher.add_handler(CommandHandler("start", start, pass_job_queue=True))
     dispatcher.add_handler(CommandHandler("help", help_command))
