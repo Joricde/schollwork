@@ -39,22 +39,25 @@ def setu(update: Update, context: CallbackContext) -> None:
     def get_setu(keywords=""):
         url = r'https://api.lolicon.app/setu/v2'
         logger.info(f"keywords {keywords}, len:{len(keywords)})")
-        if len(keywords) > 0:
-            keyword = keywords.split()
-            params = {
+        keyword = keywords.split()
+        tag_params = {
                 'r18': 0,
                 'tag': keyword,
                 'size': "regular"
             }
-        else:
-            params = {
-                'r18': 0,
-                'size': "regular"
-            }
+        keywords_params = {
+            'r18': 0,
+            'keyword': keywords,
+            'size': "regular"
+        }
         try:
-            resp = requests.get(url, params=params, timeout=10)
+            resp = requests.get(url, params=tag_params, timeout=10)
             data = resp.json()
             results_ = []
+            if not data['data']:
+                logger.info("no tag, use keywords instead")
+                resp = requests.get(url, params=keywords_params, timeout=10)
+                data = resp.json()
             if data['data']:
                 for d in data["data"]:
                     img_url = d["urls"]["regular"]
@@ -65,10 +68,11 @@ def setu(update: Update, context: CallbackContext) -> None:
             else:
                 return False
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
-            logger.error(f'服务器响应超时, params={params}')
-            return "服务器响应超时"
+            logger.error(f'服务器响应超时, params={tag_params}')
+            return False
         except Exception:
-            logger.error(f'涩图信息请求失败, params={params} Exception:{Exception}')
+            logger.error(f'涩图信息请求失败, params={tag_params} Exception:{Exception}')
+            return False
 
     logger.info("setu module running")
     bot_name = "@" + context.bot.get_me()["username"]
@@ -88,7 +92,7 @@ def setu(update: Update, context: CallbackContext) -> None:
                 disable_notification=True)
     else:
         update.message.bot.send_message(
-            text="未找到匹配图片，请调整tag",
+            text="使用tag和keyword检索均未找到匹配图片，请重新调整tag/keyword",
             chat_id=update.message.chat_id,
             disable_notification=True)
 
@@ -208,7 +212,7 @@ def echo_reply(update: Update, context: CallbackContext) -> None:
             now_time = time.time()
         update.message.reply_text(text=ms)
     else:
-        update.message.reply_text(text=update.message.text)
+        update.message.reply_text(text=f"复读机测试-您输入的内容为 '{update.message.text}'")
 
 
 def bot_start() -> None:
