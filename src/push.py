@@ -41,23 +41,26 @@ def setu(update: Update, context: CallbackContext) -> None:
         logger.info(f"keywords {keywords}, len:{len(keywords)})")
         keyword = keywords.split()
         tag_params = {
-                'r18': 0,
-                'tag': keyword,
-                'size': "regular"
-            }
+            'r18': 0,
+            'tag': keyword,
+            'size': "regular"
+        }
         keywords_params = {
             'r18': 0,
             'keyword': keywords,
             'size': "regular"
         }
         try:
-            resp = requests.get(url, params=tag_params, timeout=10)
-            data = resp.json()
-            results_ = []
-            if not data['data']:
-                logger.info("no tag, use keywords instead")
+            if len(keyword) < 2:
+                logger.info("search by keywords")
                 resp = requests.get(url, params=keywords_params, timeout=10)
                 data = resp.json()
+            else:
+                logger.info("search by tag")
+                resp = requests.get(url, params=tag_params, timeout=10)
+                data = resp.json()
+
+            results_ = []
             if data['data']:
                 for d in data["data"]:
                     img_url = d["urls"]["regular"]
