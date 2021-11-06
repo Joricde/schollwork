@@ -4,7 +4,7 @@ import requests
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram.ext import CallbackContext, ConversationHandler
 
-from src.logger import logger
+from logger import logger
 
 
 def get_specific_setu(update, data):
@@ -81,7 +81,7 @@ def setu_blur(update: Update, context: CallbackContext) -> None:
     bot_name = "@" + context.bot.get_me()["username"]
     bot_command = '/blur'
     args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, ''))
-    data = get_setu(args[0]) if args[0] else None
+    data = get_setu(args[0]) if args else get_setu()
     results = []
     if data:
         for d in data:

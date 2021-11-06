@@ -3,8 +3,8 @@ import time
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from src import spider
-from src.logger import logger
+import spider
+from logger import logger
 
 
 def to_str(li):
