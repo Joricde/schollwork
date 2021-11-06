@@ -81,7 +81,7 @@ def setu_blur(update: Update, context: CallbackContext) -> None:
     bot_name = "@" + context.bot.get_me()["username"]
     bot_command = '/blur'
     args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, ''))
-    data = get_setu(args[0]) if args else get_setu()
+    data = get_setu(args) if args else get_setu()
     results = []
     if data:
         for d in data:
@@ -127,7 +127,7 @@ def button(update: Update, context: CallbackContext) -> int:
         img_url = data["urls"]["regular"]
         pic = requests.get(img_url, stream=True).raw
         result = {'img': pic, 'pid': data['pid']}
-
+        pid = data['pid']
         query.message.bot.send_photo(
             photo=pic,
             chat_id=query.message.chat_id,
