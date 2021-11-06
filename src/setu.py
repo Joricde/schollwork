@@ -35,7 +35,9 @@ def get_specific_setu(update, data):
 def get_setu(keywords="", blur=False) -> list:
     url = r'https://api.lolicon.app/setu/v2'
     logger.info(f"keywords {keywords}, len:{len(keywords)})")
-    keyword = keywords.split()
+    keyword=keywords
+    if not blur:
+        keyword = keywords.split()
     tag_params = {
         'r18': 0,
         'tag': keyword,
@@ -120,7 +122,7 @@ def button(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
     # logger.info(f"answer: {query.answer()}")
     # logger.info(f"id {query.message.chat_id}")
-    re = get_setu(query.data)[0]
+    re = get_setu(query.data,blur=True)[0]
     data = re if re else None
     logger.info(f"query data{data}")
     if data:
@@ -128,9 +130,12 @@ def button(update: Update, context: CallbackContext) -> int:
         pic = requests.get(img_url, stream=True).raw
         result = {'img': pic, 'pid': data['pid']}
         pid = data['pid']
+        a = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f'PID {pid}', url=f'https://www.pixiv.net/artworks/{pid}')]])
         query.message.bot.send_photo(
             photo=pic,
             chat_id=query.message.chat_id,
+            reply_markup=a,
             disable_notification=True
         )
         # get_specific_setu(update, data)
