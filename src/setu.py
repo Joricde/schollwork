@@ -78,11 +78,7 @@ def setu(update: Update, context: CallbackContext) -> None:
     get_specific_setu(update, data)
 
 
-def setu_blur(update: Update, context: CallbackContext) -> None:
-    logger.info("setu_by_words module running")
-    bot_name = "@" + context.bot.get_me()["username"]
-    bot_command = '/blur'
-    args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, ''))
+def get_reply_markup(args) -> InlineKeyboardMarkup or None:
     data = get_setu(args) if args else get_setu()
     results = []
     if data:
@@ -103,12 +99,23 @@ def setu_blur(update: Update, context: CallbackContext) -> None:
                 if count % 3 == 0:
                     inline_buttons.append(copy.deepcopy(inline_row))
                     inline_row = []
-        inline_buttons.append([InlineKeyboardButton(text=f'没有我想要的tag(随机', callback_data=' ')])
+        inline_buttons.append([InlineKeyboardButton(text=f'没有我想要的tag(随机', callback_data=f'#{args}')])
         keyboards = InlineKeyboardMarkup(inline_buttons)
+        return keyboards
+    return None
+
+
+def setu_blur(update: Update, context: CallbackContext) -> int:
+    logger.info("setu_by_words module running")
+    bot_name = "@" + context.bot.get_me()["username"]
+    bot_command = '/blur'
+    args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, ''))
+    reply_markup = get_reply_markup(args)
+    if reply_markup:
         update.message.bot.send_message(
             text='以下为模糊查找到的tag，请选择一个你认为匹配的标签',
             chat_id=update.message.chat_id,
-            reply_markup=keyboards,
+            reply_markup=reply_markup,
             disable_notification=True)
     else:
         update.message.bot.send_message(
@@ -122,7 +129,12 @@ def button(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
     # logger.info(f"answer: {query.answer()}")
     # logger.info(f"id {query.message.chat_id}")
-    re = get_setu(query.data,blur=True)[0]
+    tag = query.data
+    if(tag.startswith("#")):
+        reply_markup = get_reply_markup(tag.replace("#", ""))
+        query.edit_message_reply_markup(reply_markup=reply_markup)
+        return 1
+    re = get_setu(tag.replace("#", "")[:tag.find("(")],blur=True)[0]
     data = re if re else None
     logger.info(f"query data{data}")
     if data:
@@ -141,7 +153,7 @@ def button(update: Update, context: CallbackContext) -> int:
         # get_specific_setu(update, data)
         query.delete_message()
     else:
-        query.edit_message_text('no fund!')
+        query.edit_message_text('not found!')
         return 0
     return 2
 
