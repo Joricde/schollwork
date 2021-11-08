@@ -35,7 +35,7 @@ def get_specific_setu(update, data):
 def get_setu(keywords="", blur=False) -> list:
     url = r'https://api.lolicon.app/setu/v2'
     logger.info(f"keywords {keywords}, len:{len(keywords)})")
-    keyword=keywords
+    keyword = keywords
     if not blur:
         keyword = keywords.split()
     tag_params = {
@@ -79,6 +79,7 @@ def setu(update: Update, context: CallbackContext) -> None:
 
 
 def get_reply_markup(args) -> InlineKeyboardMarkup or None:
+    args = args.strip()
     data = get_setu(args) if args else get_setu()
     results = []
     if data:
@@ -109,7 +110,7 @@ def setu_blur(update: Update, context: CallbackContext) -> int:
     logger.info("setu_by_words module running")
     bot_name = "@" + context.bot.get_me()["username"]
     bot_command = '/blur'
-    args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, ''))
+    args = "".join(str(update.message.text).replace(bot_command, '').replace(bot_name, '')).strip()
     reply_markup = get_reply_markup(args)
     if reply_markup:
         update.message.bot.send_message(
@@ -129,12 +130,14 @@ def button(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
     # logger.info(f"answer: {query.answer()}")
     # logger.info(f"id {query.message.chat_id}")
-    tag = query.data
-    if(tag.startswith("#")):
+    tag = query.data.strip()
+    if (tag.startswith("#")):
         reply_markup = get_reply_markup(tag.replace("#", ""))
         query.edit_message_reply_markup(reply_markup=reply_markup)
         return 1
-    re = get_setu(tag.replace("#", "")[:tag.find("(")],blur=True)[0]
+    tag = tag.replace("#", "")
+    tag = tag[:tag.find("(")] if tag.find("(") != -1 else tag
+    re = get_setu(tag, blur=True)[0]
     data = re if re else None
     logger.info(f"query data{data}")
     if data:
