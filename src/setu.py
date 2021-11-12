@@ -1,4 +1,5 @@
 import copy
+import time
 
 import requests
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
@@ -131,7 +132,7 @@ def button(update: Update, context: CallbackContext) -> int:
     # logger.info(f"answer: {query.answer()}")
     # logger.info(f"id {query.message.chat_id}")
     tag = query.data.strip()
-    if (tag.startswith("#")):
+    if tag.startswith("#"):
         reply_markup = get_reply_markup(tag.replace("#", ""))
         query.edit_message_reply_markup(reply_markup=reply_markup)
         return 1
@@ -154,6 +155,8 @@ def button(update: Update, context: CallbackContext) -> int:
             disable_notification=True
         )
         # get_specific_setu(update, data)
+        query.edit_message_text(tag)
+        time.sleep(5)
         query.delete_message()
     else:
         query.edit_message_text('not found!')
