@@ -13,7 +13,9 @@ def get_specific_setu(update, data):
     if data:
         for d in data:
             img_url = d["urls"]["regular"]
+            logger.info("get_specific_setu module running")
             pic = requests.get(img_url, stream=True).raw
+            logger.info("get_specific_setu module finish")
             result_ = {'img': pic, 'pid': d['pid']}
             results.append(result_)
     if results:
@@ -31,6 +33,7 @@ def get_specific_setu(update, data):
             text="使用tag和keyword检索均未找到匹配图片，请重新调整tag/keyword",
             chat_id=update.message.chat_id,
             disable_notification=True)
+    logger.info("send setu finish")
 
 
 def get_setu(keywords="", blur=False) -> list:
@@ -58,6 +61,7 @@ def get_setu(keywords="", blur=False) -> list:
             logger.info("search by tag")
             resp = requests.get(url, params=tag_params, timeout=10)
             data = resp.json()
+        logger.info("search by setu finish")
         return data['data']
     except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
         logger.error(f'服务器响应超时, params={tag_params}')
@@ -144,6 +148,7 @@ def button(update: Update, context: CallbackContext) -> int:
     if data:
         img_url = data["urls"]["regular"]
         pic = requests.get(img_url, stream=True).raw
+        logger.info("raw setu finish")
         result = {'img': pic, 'pid': data['pid']}
         pid = data['pid']
         a = InlineKeyboardMarkup(inline_keyboard=[
@@ -155,6 +160,7 @@ def button(update: Update, context: CallbackContext) -> int:
             disable_notification=True
         )
         # get_specific_setu(update, data)
+        logger.info("send blur setu finish")
         query.edit_message_text(tag)
         time.sleep(5)
         query.delete_message()
