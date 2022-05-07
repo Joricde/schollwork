@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:mysql://1.116.249.213:3306/blockchaindata</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="you@175.178.16.55" uuid="e1cef0c2-6234-4f5d-b844-2430b057934b">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://175.178.16.55:3306</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>

@@ -59,7 +59,7 @@ def get_activity() -> list:
     cookie = login_content.cookies
     end_spider = False
     query_data = get_last_record()
-    if len(query_data) > 0:
+    if query_data is not None and len(query_data) > 0:
         query_title, query_title_id, query_title_uid = query_data[0], query_data[1], query_data[2]
     else:
         query_title, query_title_id, query_title_uid = 'no data', 0, 0
@@ -67,7 +67,7 @@ def get_activity() -> list:
     stack = []
     data_list = []
     title_dict = {}
-    for num in range(1, 50):
+    for num in range(1, 2):
         try:
             r1 = requests.get(f"https://ncu.pocketuni.net/index.php?app=event&mod=School&act=board&cat=all&p={num}",
                               headers=header, cookies=cookie)
@@ -133,7 +133,7 @@ def get_last_record() -> tuple:
                      charset=config.SQL_DATA["charset"])
         cursor = db.cursor()
         cursor.execute("""select pu_activity.title, pu_activity.title_id, pu_activity.title_uid from 
-        blockchaindata.pu_activity order by id desc limit 1""")
+        bot_info.pu_activity order by id desc limit 1""")
         db.commit()
         result = cursor.fetchone()
         db.close()
