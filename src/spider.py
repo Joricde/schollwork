@@ -67,7 +67,7 @@ def get_activity() -> list:
     stack = []
     data_list = []
     title_dict = {}
-    for num in range(1, 2):
+    for num in range(1, 20):
         try:
             r1 = requests.get(f"https://ncu.pocketuni.net/index.php?app=event&mod=School&act=board&cat=all&p={num}",
                               headers=header, cookies=cookie)
